@@ -2,7 +2,25 @@ const connection = require("../database/connection");
 
 module.exports = {
   async index(request, response) {
-    const incidents = await connection('incidents').select('*');
+    const {page = 1} = request.query;
+
+    const [count] = await connection('incidents').count();
+
+    const incidents = await connection('incidents')
+    .join('ongs','ongs.id', '=', 'incidents.ong_id')
+    .limit(5)
+    .offset((page -1) *5)//pular 5 registros por página
+    .select([
+      'incidents.*',//quer dizer que quero todos os incidents, porém listo o que quero 
+      'ongs.name',
+      'ongs.email',
+      'ongs.whatsapp',
+      'ongs.city',
+      'ongs.uf',
+    ]);
+
+    response.header('X-Total-Count', count['count(*)']);//mostra o total de registros
+
     return response.json(incidents);
   },
 
@@ -10,11 +28,11 @@ module.exports = {
     const { title, description, value } = request.body;
     const ong_id = request.headers.authorization;
 
-    const [id] = await connection("incidents").insert({
+    const [id] = await connection('incidents').insert({
       title,
       description,
       value,
-      ong_id
+      ong_id,
     });
     return response.json({ id });
   },
